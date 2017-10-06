@@ -68,6 +68,7 @@ public class Tokenizer {
                         candidateLength += 1;
                     } while (start + candidateLength < input.length()
                              && separatorMap.get(String.valueOf(input.charAt(start + candidateLength))) == null
+                             && tokenMap.get(input.substring(start, start + candidateLength)) == null
                              && !Character.isWhitespace(input.charAt(start + candidateLength)));
                 }
             }
