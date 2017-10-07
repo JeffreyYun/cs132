@@ -72,14 +72,16 @@ public class Parser {
     }
 
     private boolean L() {
-        int index = this.index;
+        Token next = peek();
+        if (next.tokenType == TokenType.RIGHT_BRACE) {
+            return true;
+        }
         if (S()) {
-//            if (!L()) {
-//                return false;
-//            }
-            L();
+            if (!L()) {
+                return false;
+            }
         } else {
-            this.index = index;
+            return false;
         }
         return true;
     }
@@ -96,6 +98,15 @@ public class Parser {
             return false;
         }
         return true;
+    }
+
+    private Token peek() {
+        if (index >= tokens.size()) {
+            return null;
+        } else {
+            //System.err.println(tokens.get(index).tokenType.name());
+            return tokens.get(index);
+        }
     }
 
     private Token next() {
