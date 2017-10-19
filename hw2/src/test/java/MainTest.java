@@ -1,9 +1,9 @@
 import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.Assert;
 
 public class MainTest {
     @Test public void testAppHasAGreeting() {
-        Main classUnderTest = new Main();
-        assertEquals(true, true);
+        Typecheck classUnderTest = new Typecheck();
+        Assert.assertEquals(true, true);
     }
 }
