@@ -56,6 +56,10 @@ public class Context {
         }
     }
 
+    public String getField(String identifier) {
+        return fields.get(identifier);
+    }
+
     public boolean addParameter(String identifier, String type) {
         if (state == State.Function) {
             parameters.put(identifier, type);
@@ -63,6 +67,10 @@ public class Context {
         } else {
             return false;
         }
+    }
+
+    public String getParameter(String identifier) {
+        return parameters.get(identifier);
     }
 
     public boolean addLocal(String identifier, String type) {
