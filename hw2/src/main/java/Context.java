@@ -7,15 +7,34 @@ public class Context {
         Class,
         Function
     }
-    public State state;
+    public State state = State.Root;
+    private String name;
+    // Filled in by ClassVisitor
     private HashSet<String> classes = new HashSet<>();
+    public HashMap<String, HashMap<String, String>> properties = new HashMap<>();
+    public HashMap<String, HashMap<String, String>> methods = new HashMap<>();
+    public HashMap<String, String> subtypes = new HashMap<>();
+    // Used by TypeChecker
     private HashMap<String, String> fields = new HashMap<>();
     private HashMap<String, String> parameters = new HashMap<>();
     private HashMap<String, String> locals = new HashMap<>();
 
+    public Context name(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public String name() {
+        return this.name;
+    }
+
     public boolean push() {
         if (state == State.Root) {
             state = State.Class;
+            if (!addClass(name)) {
+                return false;
+            }
+            properties.put(name, new HashMap<>());
         } else if (state == State.Class) {
             state = State.Function;
         } else if (state == State.Function) {
@@ -38,7 +57,7 @@ public class Context {
         return true;
     }
 
-    public boolean addClass(String identifier) {
+    private boolean addClass(String identifier) {
         if (classes.contains(identifier)) {
             return false;
         } else {
