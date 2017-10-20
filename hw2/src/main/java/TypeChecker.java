@@ -2,13 +2,21 @@ import syntaxtree.*;
 import visitor.GJVisitor;
 
 import java.util.Enumeration;
+import java.util.HashSet;
 
 public class TypeChecker implements GJVisitor<String, Context> {
-    public static final String failure = "{failure}";
+    public static final String failure = "5{failure}";
+    private HashSet<String> classes;
 
     public String visit(NodeList n, Context context) {
-        return failure;
+        for (Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
+            if (e.nextElement().accept(this, context).equals(failure)) {
+                return failure;
+            }
+        }
+        return "";
     }
+
     public String visit(NodeListOptional n, Context context) {
         if (n.present()) {
             for (Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
@@ -17,16 +25,27 @@ public class TypeChecker implements GJVisitor<String, Context> {
                 }
             }
         }
-        return null;
+        return "";
     }
+
     public String visit(NodeOptional n, Context context) {
-        return failure;
+        if ( n.present() )
+            return n.node.accept(this, context);
+        else
+            return "";
     }
+
     public String visit(NodeSequence n, Context context) {
-        return failure;
+        for ( Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
+            if (e.nextElement().accept(this, context).equals(failure)) {
+                return failure;
+            }
+        }
+        return "";
     }
+
     public String visit(NodeToken n, Context context) {
-        return n.tokenImage;
+        return "";
     }
 
     //
@@ -39,7 +58,15 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f2 -> <EOF>
      */
     public String visit(Goal n, Context context) {
-        return failure;
+        this.classes = new HashSet<>();
+        this.classes.addAll(context.classes);
+        context.classes.clear();
+        if (n.f0.accept(this, context).equals(failure)
+            || n.f1.accept(this, context).equals(failure)) {
+            return failure;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -66,8 +93,10 @@ public class TypeChecker implements GJVisitor<String, Context> {
         context.name(n.f1.f0.tokenImage).push(); // root -> class
         context.push(); // class -> function
         context.addParameter(n.f11.f0.tokenImage, "String[]");
-        n.f14.accept(this, context);
-        n.f15.accept(this, context);
+        if (n.f14.accept(this, context).equals(failure) ||
+                n.f15.accept(this, context).equals(failure)) {
+            return failure;
+        }
         context.pop(); // function -> class
         context.pop(); // class -> root
         return "";
@@ -90,7 +119,13 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f5 -> "}"
      */
     public String visit(ClassDeclaration n, Context context) {
-        return failure;
+        context.name(n.f1.f0.tokenImage).push();
+        if (n.f3.accept(this, context).equals(failure) ||
+                n.f4.accept(this, context).equals(failure)) {
+            return failure;
+        }
+        context.pop();
+        return context.name();
     }
 
     /**
@@ -104,7 +139,14 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f7 -> "}"
      */
     public String visit(ClassExtendsDeclaration n, Context context) {
-        return failure;
+        context.name(n.f1.f0.tokenImage).push();
+        if (n.f5.accept(this, context).equals(failure) ||
+                n.f6.accept(this, context).equals(failure) ||
+                !classes.contains(n.f3.f0.tokenImage)) {
+            return failure;
+        }
+        context.pop();
+        return context.name();
     }
 
     /**
@@ -116,15 +158,19 @@ public class TypeChecker implements GJVisitor<String, Context> {
         if (context.state == Context.State.Class) {
             if (context.getField(n.f1.f0.tokenImage) != null) {
                 return failure;
-            } else {
-                context.addField(n.f1.f0.tokenImage, n.f0.accept(this, context));
-                return failure; // not actually
+            } else if (!context.addField(n.f1.f0.tokenImage, n.f0.accept(this, context))) {
+                return failure;
             }
         } else if (context.state == Context.State.Function) {
-            return failure; // not actually
+            if (context.getLocal(n.f1.f0.tokenImage) != null) {
+                return failure;
+            } else if (!context.addLocal(n.f1.f0.tokenImage, n.f0.accept(this, context))) {
+                return failure;
+            }
         } else {
             return failure;
         }
+        return "";
     }
 
     /**
@@ -143,7 +189,16 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f12 -> "}"
      */
     public String visit(MethodDeclaration n, Context context) {
-        return failure;
+        if (!context.push() ||
+                n.f4.accept(this, context).equals(failure) ||
+                n.f7.accept(this, context).equals(failure) ||
+                n.f8.accept(this, context).equals(failure) ||
+                n.f10.accept(this, context).equals(failure) ||
+                !context.pop()) {
+            return failure;
+        } else {
+            return "";
+        }
     }
 
     /**
@@ -151,7 +206,12 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> ( FormalParameterRest() )*
      */
     public String visit(FormalParameterList n, Context context) {
-        return failure;
+        if (n.f0.accept(this, context).equals(failure) ||
+                n.f1.accept(this, context).equals(failure)) {
+            return failure;
+        } else {
+            return "";
+        }
     }
 
     /**
@@ -159,7 +219,12 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> Identifier()
      */
     public String visit(FormalParameter n, Context context) {
-        return failure;
+        if (context.getParameter(n.f1.f0.tokenImage) != null ||
+                !context.addParameter(n.f1.f0.tokenImage, n.f0.accept(this, context))) {
+            return failure;
+        } else {
+            return "";
+        }
     }
 
     /**
@@ -167,7 +232,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> FormalParameter()
      */
     public String visit(FormalParameterRest n, Context context) {
-        return failure;
+        return n.f1.accept(this, context);
     }
 
     /**
@@ -212,7 +277,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      *       | PrintStatement()
      */
     public String visit(Statement n, Context context) {
-        return n.accept(this, context);
+        return n.f0.accept(this, context);
     }
 
     /**
@@ -232,7 +297,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      */
     public String visit(AssignmentStatement n, Context context) {
         if (n.f2.accept(this, context).equals(context.lookup(n.f0.f0.tokenImage))) {
-            return null;
+            return "";
         } else {
             return failure;
         }
@@ -251,7 +316,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
         if ("int[]".equals(context.lookup(n.f0.f0.tokenImage)) &&
                 n.f2.accept(this, context).equals("int") &&
                 n.f5.accept(this, context).equals("int")) {
-            return null;
+            return "";
         } else {
             return failure;
         }
@@ -435,7 +500,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f5 -> ")"
      */
     public String visit(MessageSend n, Context context) {
-        return failure;
+        return failure; // implement
     }
 
     /**
@@ -443,7 +508,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> ( ExpressionRest() )*
      */
     public String visit(ExpressionList n, Context context) {
-        return failure;
+        return failure; // implement
     }
 
     /**
@@ -451,7 +516,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> Expression()
      */
     public String visit(ExpressionRest n, Context context) {
-        return failure;
+        return failure; // implement
     }
 
     /**
@@ -466,7 +531,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      *       | BracketExpression()
      */
     public String visit(PrimaryExpression n, Context context) {
-        return n.accept(this, context);
+        return n.f0.accept(this, context);
     }
 
     /**

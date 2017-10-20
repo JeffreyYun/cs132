@@ -10,9 +10,10 @@ public class Context {
     public State state = State.Root;
     private String name;
     // Filled in by ClassVisitor
-    private HashSet<String> classes = new HashSet<>();
+    public HashSet<String> classes = new HashSet<>();
     public HashMap<String, HashMap<String, String>> properties = new HashMap<>();
     public HashMap<String, HashMap<String, String>> methods = new HashMap<>();
+    public HashMap<String, HashMap<String, String>> methodParameters = new HashMap<>();
     public HashMap<String, String> subtypes = new HashMap<>(); // string1 extends string2
     // Used by TypeChecker
     private HashMap<String, String> fields = new HashMap<>();

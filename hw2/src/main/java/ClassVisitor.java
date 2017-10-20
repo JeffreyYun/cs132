@@ -19,7 +19,19 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
             return true;
     }
 
-    public boolean success = true;
+    /**
+     * f0 -> MainClass()
+     * f1 -> ( TypeDeclaration() )*
+     * f2 -> <EOF>
+     */
+    @Override
+    public Boolean visit(Goal n, Context argu) {
+        Boolean _ret = n.f0.accept(this, argu)
+                && n.f1.accept(this, argu);
+        n.f2.accept(this, argu);
+        return _ret;
+    }
+
     /**
      * f0 -> "class"
      * f1 -> Identifier()
@@ -45,6 +57,14 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
         boolean result = context.name(n.f1.f0.tokenImage).push();
         context.pop();
         return result;
+    }
+
+    /**
+     * f0 -> ClassDeclaration()
+     *       | ClassExtendsDeclaration()
+     */
+    public Boolean visit(TypeDeclaration n, Context argu) {
+        return n.f0.accept(this, argu);
     }
 
     /**
