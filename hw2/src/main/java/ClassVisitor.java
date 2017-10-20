@@ -4,6 +4,8 @@ import visitor.GJDepthFirst;
 import java.util.Enumeration;
 import java.util.HashMap;
 
+// Stores classes, their properties, methods, and any subtyping relationships in Context
+// and verifies the required acyclic and uniqueness properties.
 public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
     public Boolean visit(NodeListOptional n, Context argu) {
         if ( n.present() ) {
@@ -62,6 +64,20 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
         return result;
     }
 
+    private boolean insertSubtype(Context context, String c, String d) { //c extends d
+        if (context.subtypes.containsKey(c)) {
+            return false;
+        }
+        context.subtypes.put(c, d);
+        d = c;
+        while ((d = context.subtypes.get(d)) != null) {
+            if (d.equals(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * f0 -> "class"
      * f1 -> Identifier()
@@ -75,6 +91,7 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
     @Override
     public Boolean visit(ClassExtendsDeclaration n, Context context) {
         boolean result = context.name(n.f1.f0.tokenImage).push()
+                && insertSubtype(context, n.f1.f0.tokenImage, n.f3.f0.tokenImage)
                 && n.f5.accept(this, context)
                 && n.f6.accept(this, context);
         context.pop();

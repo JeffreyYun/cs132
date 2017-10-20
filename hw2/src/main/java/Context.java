@@ -13,7 +13,7 @@ public class Context {
     private HashSet<String> classes = new HashSet<>();
     public HashMap<String, HashMap<String, String>> properties = new HashMap<>();
     public HashMap<String, HashMap<String, String>> methods = new HashMap<>();
-    public HashMap<String, String> subtypes = new HashMap<>();
+    public HashMap<String, String> subtypes = new HashMap<>(); // string1 extends string2
     // Used by TypeChecker
     private HashMap<String, String> fields = new HashMap<>();
     private HashMap<String, String> parameters = new HashMap<>();
@@ -110,8 +110,14 @@ public class Context {
             return locals.get(identifier);
         } else if (parameters.containsKey(identifier)) {
             return parameters.get(identifier);
-        } else {
+        } else if (fields.containsKey(identifier)) {
             return fields.get(identifier);
+        } else if (state == State.Function
+                && subtypes.containsKey(name)
+                && properties.get(subtypes.get(name)).containsKey(identifier)) {
+            return properties.get(subtypes.get(name)).get(identifier);
+        } else {
+            return null;
         }
     }
 }
