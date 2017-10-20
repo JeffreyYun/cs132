@@ -74,6 +74,10 @@ public class Context {
         }
     }
 
+    public String getLocal(String identifier) {
+        return locals.get(identifier);
+    }
+
     public String lookup(String identifier) {
         if (locals.containsKey(identifier)) {
             return locals.get(identifier);
