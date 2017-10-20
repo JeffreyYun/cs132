@@ -155,11 +155,22 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
      */
     @Override
     public Boolean visit(MethodDeclaration n, Context context) {
-        HashMap<String, String> fields = context.properties.get(context.name());
-        if (fields.containsKey(n.f2.f0.tokenImage)) {
+        context.push();
+        if (!context.methods.containsKey(context.name())) {
+            context.methods.put(context.name(), new HashMap<>());
+        }
+        if (!context.methodParameters.containsKey(context.name())) {
+            context.methodParameters.put(context.name(), new HashMap<>());
+        }
+        HashMap<String, String> methods = context.methods.get(context.name());
+        HashMap<String, String> methodParameters = context.methodParameters.get(context.name());
+        if (methods.containsKey(n.f2.f0.tokenImage)) {
             return false;
         } else {
-            fields.put(n.f2.f0.tokenImage, new TypeChecker().visit(n.f1, context));
+            TypeChecker tc = new TypeChecker();
+            methods.put(n.f2.f0.tokenImage, tc.visit(n.f1, context));
+            methodParameters.put(n.f2.f0.tokenImage, tc.visit(n.f4, context));
+            context.pop();
             return true;
         }
     }

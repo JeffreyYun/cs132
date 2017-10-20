@@ -206,11 +206,12 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> ( FormalParameterRest() )*
      */
     public String visit(FormalParameterList n, Context context) {
-        if (n.f0.accept(this, context).equals(failure) ||
-                n.f1.accept(this, context).equals(failure)) {
+        String f0, f1;
+        if ((f0 = n.f0.accept(this, context)).equals(failure) ||
+                (f1 = n.f1.accept(this, context)).equals(failure)) {
             return failure;
         } else {
-            return "";
+            return f0 + ", " + f1;
         }
     }
 
@@ -219,11 +220,12 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> Identifier()
      */
     public String visit(FormalParameter n, Context context) {
+        String f0;
         if (context.getParameter(n.f1.f0.tokenImage) != null ||
-                !context.addParameter(n.f1.f0.tokenImage, n.f0.accept(this, context))) {
+                !context.addParameter(n.f1.f0.tokenImage, f0 = n.f0.accept(this, context))) {
             return failure;
         } else {
-            return "";
+            return f0;
         }
     }
 
@@ -296,7 +298,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f3 -> ";"
      */
     public String visit(AssignmentStatement n, Context context) {
-        if (n.f2.accept(this, context).equals(context.lookup(n.f0.f0.tokenImage))) {
+        if (n.f2.accept(this, context).equals(context.lookupIdentifier(n.f0.f0.tokenImage))) {
             return "";
         } else {
             return failure;
@@ -313,7 +315,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f6 -> ";"
      */
     public String visit(ArrayAssignmentStatement n, Context context) {
-        if ("int[]".equals(context.lookup(n.f0.f0.tokenImage)) &&
+        if ("int[]".equals(context.lookupIdentifier(n.f0.f0.tokenImage)) &&
                 n.f2.accept(this, context).equals("int") &&
                 n.f5.accept(this, context).equals("int")) {
             return "";
@@ -384,7 +386,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      *       | PlusExpression()
      *       | MinusExpression()
      *       | TimesExpression()
-     *       | ArrayLookup()
+     *       | ArraylookupIdentifier()
      *       | ArrayLength()
      *       | MessageSend()
      *       | PrimaryExpression()
@@ -591,7 +593,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f3 -> ")"
      */
     public String visit(AllocationExpression n, Context context) {
-        String result = context.lookup(n.f1.f0.tokenImage);
+        String result = context.lookupIdentifier(n.f1.f0.tokenImage);
         if (result == null) {
             return failure;
         } else {

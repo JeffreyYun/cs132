@@ -51,7 +51,7 @@ public class Context {
         } else if (state == State.Function) {
             parameters.clear();
             locals.clear();
-            state = State.Root;
+            state = State.Class;
         } else if (state == State.Root) {
             return false;
         }
@@ -106,7 +106,7 @@ public class Context {
         return locals.get(identifier);
     }
 
-    public String lookup(String identifier) {
+    public String lookupIdentifier(String identifier) {
         if (locals.containsKey(identifier)) {
             return locals.get(identifier);
         } else if (parameters.containsKey(identifier)) {
