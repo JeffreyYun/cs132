@@ -46,7 +46,9 @@ public class Context {
             if (!addClass(name)) {
                 return false;
             }
-            properties.put(name, new HashMap<>());
+            if (!properties.containsKey(name)) {
+                properties.put(name, new HashMap<>());
+            }
         } else if (state == State.Class) {
             state = State.Function;
         } else if (state == State.Function) {

@@ -309,7 +309,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f3 -> ";"
      */
     public String visit(AssignmentStatement n, Context context) {
-        if (n.f2.accept(this, context).equals(context.lookupIdentifier(n.f0.f0.tokenImage))) {
+        if (context.isSubtype(n.f2.accept(this, context), context.lookupIdentifier(n.f0.f0.tokenImage))) {
             return "";
         } else {
             return failure;
@@ -536,7 +536,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
             return failure;
         }
         for (int i = 0; i < paramList.length; i++) {
-            if (!context.isSubtype(paramList[i], messageList[i])) {
+            if (!context.isSubtype(messageList[i], paramList[i])) {
                 return failure;
             }
         }
