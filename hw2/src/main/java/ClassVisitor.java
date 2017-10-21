@@ -5,8 +5,28 @@ import java.util.Enumeration;
 import java.util.HashMap;
 
 // Stores classes, their properties, methods, and any subtyping relationships in Context
-// and verifies the required acyclic and uniqueness properties.
+// and verifies the required acyclic, uniqueness, and no overloading properties.
 public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
+    private boolean noOverloads(Context context) {
+        for (final String s : context.subtypes.keySet()) {
+            final HashMap<String, String> methods = context.methods.get(s);
+            final HashMap<String, String> methodParameters = context.methodParameters.get(s);
+            String parent = s;
+            while ((parent = context.subtypes.get(parent)) != null) {
+                HashMap<String, String> parentMethods = context.methods.get(parent);
+                HashMap<String, String> parentMethodParameters = context.methodParameters.get(parent);
+                for (final String method : methods.keySet()) {
+                    if (parentMethods.containsKey(method) &&
+                            (!parentMethods.get(method).equals(methods.get(method)) ||
+                                    !parentMethodParameters.get(method).equals(methodParameters.get(method)))) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     public Boolean visit(NodeListOptional n, Context argu) {
         if ( n.present() ) {
             Boolean _ret=true;
@@ -27,7 +47,8 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
     @Override
     public Boolean visit(Goal n, Context argu) {
         Boolean _ret = n.f0.accept(this, argu)
-                && n.f1.accept(this, argu);
+                && n.f1.accept(this, argu)
+                && noOverloads(argu);
         n.f2.accept(this, argu);
         return _ret;
     }
