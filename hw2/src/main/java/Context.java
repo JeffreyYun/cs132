@@ -132,7 +132,7 @@ public class Context {
         }
     }
 
-    public String lookupMethod(String method) {
+    public String lookupMethod(String name, String method) {
         HashMap<String, String> methods;
         String parent = name;
         do {
@@ -141,6 +141,20 @@ public class Context {
                 return methods.get(method);
             }
         } while ((parent = subtypes.get(parent)) != null);
+
+        return null;
+    }
+
+    public String lookupMethodParameters(String name, String method) {
+        HashMap<String, String> methodParameters;
+        String parent = name;
+        do {
+            methodParameters = this.methodParameters.get(parent);
+            if (methodParameters.containsKey(method)) {
+                return methodParameters.get(method);
+            }
+        } while ((parent = subtypes.get(parent)) != null);
+
         return null;
     }
 

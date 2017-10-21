@@ -519,10 +519,8 @@ public class TypeChecker implements GJVisitor<String, Context> {
             return failure;
         }
         f2 = n.f2.f0.tokenImage;
-        HashMap<String, String> methods = context.methods.get(f0);
-        HashMap<String, String> methodParameters = context.methodParameters.get(f0);
-        final String type = methods.get(f2);
-        final String params = methodParameters.get(f2);
+        final String type = context.lookupMethod(f0, f2);
+        final String params = context.lookupMethodParameters(f0, f2);
         if (type == null || params == null) {
             return failure;
         }

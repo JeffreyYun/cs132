@@ -98,7 +98,14 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
      */
     @Override
     public Boolean visit(ClassDeclaration n, Context context) {
-        boolean result = context.name(n.f1.f0.tokenImage).push()
+        boolean result = context.name(n.f1.f0.tokenImage).push();
+        if (!context.methods.containsKey(context.name())) {
+            context.methods.put(context.name(), new HashMap<>());
+        }
+        if (!context.methodParameters.containsKey(context.name())) {
+            context.methodParameters.put(context.name(), new HashMap<>());
+        }
+        result = result
                 && n.f3.accept(this, context)
                 && n.f4.accept(this, context);
         context.pop();
@@ -131,7 +138,14 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
      */
     @Override
     public Boolean visit(ClassExtendsDeclaration n, Context context) {
-        boolean result = context.name(n.f1.f0.tokenImage).push()
+        boolean result = context.name(n.f1.f0.tokenImage).push();
+        if (!context.methods.containsKey(context.name())) {
+            context.methods.put(context.name(), new HashMap<>());
+        }
+        if (!context.methodParameters.containsKey(context.name())) {
+            context.methodParameters.put(context.name(), new HashMap<>());
+        }
+        result = result
                 && insertSubtype(context, n.f1.f0.tokenImage, n.f3.f0.tokenImage)
                 && n.f5.accept(this, context)
                 && n.f6.accept(this, context);
@@ -177,12 +191,6 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
     @Override
     public Boolean visit(MethodDeclaration n, Context context) {
         context.push();
-        if (!context.methods.containsKey(context.name())) {
-            context.methods.put(context.name(), new HashMap<>());
-        }
-        if (!context.methodParameters.containsKey(context.name())) {
-            context.methodParameters.put(context.name(), new HashMap<>());
-        }
         HashMap<String, String> methods = context.methods.get(context.name());
         HashMap<String, String> methodParameters = context.methodParameters.get(context.name());
         if (methods.containsKey(n.f2.f0.tokenImage)) {
