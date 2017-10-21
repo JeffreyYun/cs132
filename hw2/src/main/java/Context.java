@@ -19,6 +19,17 @@ public class Context {
     private HashMap<String, String> fields = new HashMap<>();
     private HashMap<String, String> parameters = new HashMap<>();
     private HashMap<String, String> locals = new HashMap<>();
+    private boolean type = false;
+
+    public Context type() {
+        this.type = true;
+        return this;
+    }
+
+    public Context untype() {
+        this.type = false;
+        return this;
+    }
 
     public Context name(String name) {
         this.name = name;
@@ -106,19 +117,49 @@ public class Context {
         return locals.get(identifier);
     }
 
+    public boolean isSubtype(String c, String d) { // c extends d
+        if (c.equals(d)) {
+            return true;
+        } else {
+            while ((c = subtypes.get(c)) != null) {
+                if (c.equals(d)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public String lookupMethod(String method) {
+        HashMap<String, String> methods;
+        String parent = name;
+        do {
+            methods = this.methods.get(parent);
+            if (methods.containsKey(method)) {
+                return methods.get(method);
+            }
+        } while ((parent = subtypes.get(parent)) != null);
+        return null;
+    }
+
     public String lookupIdentifier(String identifier) {
-        if (locals.containsKey(identifier)) {
+        if (type) {
+            return identifier;
+        } else if (locals.containsKey(identifier)) {
             return locals.get(identifier);
         } else if (parameters.containsKey(identifier)) {
             return parameters.get(identifier);
         } else if (fields.containsKey(identifier)) {
             return fields.get(identifier);
-        } else if (state == State.Function
-                && subtypes.containsKey(name)
-                && properties.get(subtypes.get(name)).containsKey(identifier)) {
-            return properties.get(subtypes.get(name)).get(identifier);
-        } else {
-            return null;
+        } else if (state == State.Function) {
+            String name = this.name;
+            while ((name = subtypes.get(name)) != null) {
+                String result = properties.get(name).get(identifier);
+                if (result != null) {
+                    return result;
+                }
+            }
         }
+        return null;
     }
 }

@@ -3,6 +3,7 @@ import visitor.GJVisitor;
 
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.HashMap;
 
 public class TypeChecker implements GJVisitor<String, Context> {
     public static final String failure = "5{failure}";
@@ -18,14 +19,18 @@ public class TypeChecker implements GJVisitor<String, Context> {
     }
 
     public String visit(NodeListOptional n, Context context) {
+        StringBuilder list = new StringBuilder();
         if (n.present()) {
             for (Enumeration<Node> e = n.elements(); e.hasMoreElements(); ) {
-                if (e.nextElement().accept(this, context).equals(failure)) {
+                String result;
+                if ((result = e.nextElement().accept(this, context)).equals(failure)) {
                     return failure;
+                } else {
+                    list.append(result).append(",");
                 }
             }
         }
-        return "";
+        return list.toString();
     }
 
     public String visit(NodeOptional n, Context context) {
@@ -189,11 +194,15 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f12 -> "}"
      */
     public String visit(MethodDeclaration n, Context context) {
+        String f1, f10;
+        f1 = n.f1.accept(this, context.type());
+        context.untype();
         if (!context.push() ||
                 n.f4.accept(this, context).equals(failure) ||
                 n.f7.accept(this, context).equals(failure) ||
                 n.f8.accept(this, context).equals(failure) ||
-                n.f10.accept(this, context).equals(failure) ||
+                (f10 = n.f10.accept(this, context)).equals(failure) ||
+                !f1.equals(f10) ||
                 !context.pop()) {
             return failure;
         } else {
@@ -211,7 +220,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
                 (f1 = n.f1.accept(this, context)).equals(failure)) {
             return failure;
         } else {
-            return f0 + ", " + f1;
+            return f0 + "," + f1;
         }
     }
 
@@ -244,7 +253,9 @@ public class TypeChecker implements GJVisitor<String, Context> {
      *       | Identifier()
      */
     public String visit(Type n, Context context) {
-        return n.f0.accept(this, context);
+        String result = n.f0.accept(this, context.type());
+        context.untype();
+        return result;
     }
 
     /**
@@ -386,7 +397,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      *       | PlusExpression()
      *       | MinusExpression()
      *       | TimesExpression()
-     *       | ArraylookupIdentifier()
+     *       | ArrayLookup()
      *       | ArrayLength()
      *       | MessageSend()
      *       | PrimaryExpression()
@@ -502,7 +513,34 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f5 -> ")"
      */
     public String visit(MessageSend n, Context context) {
-        return failure; // implement
+        final String f0, f2, f4;
+        f0 = n.f0.accept(this, context);
+        if (f0.equals(failure)) {
+            return failure;
+        }
+        f2 = n.f2.f0.tokenImage;
+        HashMap<String, String> methods = context.methods.get(f0);
+        HashMap<String, String> methodParameters = context.methodParameters.get(f0);
+        final String type = methods.get(f2);
+        final String params = methodParameters.get(f2);
+        if (type == null || params == null) {
+            return failure;
+        }
+        final String[] paramList = params.split(",");
+        f4 = n.f4.accept(this, context);
+        if (f4.equals(failure)) {
+            return failure;
+        }
+        final String[] messageList = f4.split(",");
+        if (paramList.length != messageList.length) {
+            return failure;
+        }
+        for (int i = 0; i < paramList.length; i++) {
+            if (!context.isSubtype(paramList[i], messageList[i])) {
+                return failure;
+            }
+        }
+        return type;
     }
 
     /**
@@ -510,7 +548,13 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> ( ExpressionRest() )*
      */
     public String visit(ExpressionList n, Context context) {
-        return failure; // implement
+        final String f0, f1;
+        if ((f0 = n.f0.accept(this, context)).equals(failure) ||
+                (f1 = n.f1.accept(this, context)).equals(failure)) {
+            return failure;
+        } else {
+            return f0 + "," + f1;
+        }
     }
 
     /**
@@ -518,7 +562,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f1 -> Expression()
      */
     public String visit(ExpressionRest n, Context context) {
-        return failure; // implement
+        return n.f1.accept(this, context);
     }
 
     /**
@@ -561,7 +605,12 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f0 -> <IDENTIFIER>
      */
     public String visit(Identifier n, Context context) {
-        return n.f0.tokenImage;
+        String f0;
+        if ((f0 = context.lookupIdentifier(n.f0.tokenImage)) != null) {
+            return f0;
+        } else {
+            return failure;
+        }
     }
 
     /**
@@ -593,11 +642,10 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f3 -> ")"
      */
     public String visit(AllocationExpression n, Context context) {
-        String result = context.lookupIdentifier(n.f1.f0.tokenImage);
-        if (result == null) {
-            return failure;
+        if (classes.contains(n.f1.f0.tokenImage)) {
+            return n.f1.f0.tokenImage;
         } else {
-            return result;
+            return failure;
         }
     }
 
