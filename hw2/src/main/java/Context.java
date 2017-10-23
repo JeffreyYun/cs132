@@ -20,6 +20,21 @@ public class Context {
     private HashMap<String, String> parameters = new HashMap<>();
     private HashMap<String, String> locals = new HashMap<>();
     private boolean type = false;
+    private boolean staticFunction = false;
+
+    public Context staticFunction() {
+        this.staticFunction = true;
+        return this;
+    }
+
+    public Context unstaticFunction() {
+        this.staticFunction = false;
+        return this;
+    }
+
+    public boolean isStaticFunction() {
+        return staticFunction;
+    }
 
     public Context type() {
         this.type = true;

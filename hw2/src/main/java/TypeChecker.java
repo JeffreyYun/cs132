@@ -96,13 +96,13 @@ public class TypeChecker implements GJVisitor<String, Context> {
      */
     public String visit(MainClass n, Context context) {
         context.name(n.f1.f0.tokenImage).push(); // root -> class
-        context.push(); // class -> function
+        context.staticFunction().push(); // class -> function
         context.addParameter(n.f11.f0.tokenImage, "String[]");
         if (n.f14.accept(this, context).equals(failure) ||
                 n.f15.accept(this, context).equals(failure)) {
             return failure;
         }
-        context.pop(); // function -> class
+        context.unstaticFunction().pop(); // function -> class
         context.pop(); // class -> root
         return "";
     }
@@ -615,7 +615,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
      * f0 -> "this"
      */
     public String visit(ThisExpression n, Context context) {
-        return context.name();
+        return context.isStaticFunction() ? failure : context.name();
     }
 
     /**
