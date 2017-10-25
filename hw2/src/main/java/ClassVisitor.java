@@ -15,6 +15,9 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
             while ((parent = context.subtypes.get(parent)) != null) {
                 HashMap<String, String> parentMethods = context.methods.get(parent);
                 HashMap<String, String> parentMethodParameters = context.methodParameters.get(parent);
+                if (parentMethods == null || parentMethodParameters == null) {
+                    return false;
+                }
                 for (final String method : methods.keySet()) {
                     if (parentMethods.containsKey(method) &&
                             (!parentMethods.get(method).equals(methods.get(method)) ||
