@@ -97,7 +97,7 @@ public class TypeChecker implements GJVisitor<String, Context> {
     public String visit(MainClass n, Context context) {
         context.name(n.f1.f0.tokenImage).push(); // root -> class
         context.staticFunction().push(); // class -> function
-        context.addParameter(n.f11.f0.tokenImage, "String[]");
+        //context.addParameter(n.f11.f0.tokenImage, "String[]");
         if (n.f14.accept(this, context).equals(failure) ||
                 n.f15.accept(this, context).equals(failure)) {
             return failure;
@@ -230,8 +230,8 @@ public class TypeChecker implements GJVisitor<String, Context> {
      */
     public String visit(FormalParameter n, Context context) {
         String f0;
-        if (context.getParameter(n.f1.f0.tokenImage) != null ||
-                !context.addParameter(n.f1.f0.tokenImage, f0 = n.f0.accept(this, context))) {
+        if (context.getLocal(n.f1.f0.tokenImage) != null ||
+                !context.addLocal(n.f1.f0.tokenImage, f0 = n.f0.accept(this, context))) {
             return failure;
         } else {
             return f0;
