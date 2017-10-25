@@ -3,7 +3,6 @@ import visitor.GJVisitor;
 
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.HashMap;
 
 public class TypeChecker implements GJVisitor<String, Context> {
     public static final String failure = "5{failure}";
