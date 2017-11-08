@@ -98,12 +98,6 @@ function grade () {
         ERR_FILE="tests/$(basename "$file").stderr"
         DIFF_FILE="tests/$(basename "$file").diff"
     
-        if [ -n $TIMEOUT_CMD ]; then
-            JAVA="timeout $TIMEOUT java"
-        else
-            JAVA="java"
-        fi
-
         $JAVA -Djava.security.manager -Djava.security.policy=="misc/JavaSecurityPolicy.policy" \
            -cp "$LIBRARIES" "$MAINCLASS" <"$file" >"$OUT_FILE" 2>"$ERR_FILE"
 
@@ -146,7 +140,7 @@ function copy {
 export -f copy
 
 function vapor_eval {
-    java -jar $MISC_FOLDER/vapor.jar run -no-stack-trace-on-explicit-error $1 2>$2 >$2
+    $JAVA -jar $MISC_FOLDER/vapor.jar run -no-stack-trace-on-explicit-error $1 &>$2
 }
 export -f vapor_eval
 
@@ -229,6 +223,15 @@ else
     warn "Couldn't find 'timeout' or 'gtimout'. Install it to check for timouts"
     export TIMEOUT_CMD=""
 fi
+
+if [ -n $TIMEOUT_CMD ]; then
+    JAVA_CMD="$TIMEOUT_CMD $TIMEOUT java"
+else
+    JAVA_CMD="java"
+fi
+
+export JAVA="$JAVA_CMD $JAVA_TOOL_OPTIONS"
+unset JAVA_TOOL_OPTIONS
 
 if [[ -f "$TAR_FOLDER" ]]; then
     info "Testing '$TAR_FOLDER' against all $COUNT tests"
