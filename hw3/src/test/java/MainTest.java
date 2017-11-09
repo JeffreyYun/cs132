@@ -3,7 +3,7 @@ import static org.junit.Assert.*;
 
 public class MainTest {
     @Test public void testAppHasAGreeting() {
-        Main classUnderTest = new Main();
+        J2V classUnderTest = new J2V();
         assertEquals(true, true);
     }
 }

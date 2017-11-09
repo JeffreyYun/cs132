@@ -26,6 +26,68 @@ public class Context {
     private HashMap<String, String> locals = new HashMap<>();
     private boolean type = false;
     private boolean staticFunction = false;
+    // Used by Vaporifier
+    private int temp;
+    private int label;
+    private boolean RHS;
+    private String expressionResult;
+    private String parameterList;
+
+    public Context RHS() {
+        RHS = true;
+        return this;
+    }
+
+    public Context unRHS() {
+        RHS = false;
+        return this;
+    }
+
+    public boolean isRHS() {
+        return RHS;
+    }
+
+    public Context expressionResult(String expressionResult) {
+        this.expressionResult = expressionResult;
+        return this;
+    }
+
+    public String expressionResult() {
+        return expressionResult;
+    }
+
+    public Context parameterList(String parameterList) {
+        this.parameterList = parameterList;
+        return this;
+    }
+
+    public String parameterList() {
+        return parameterList;
+    }
+
+    public Integer getTemp() {
+        return temp;
+    }
+
+    public Integer getAndIncrementTemp() {
+        return temp++;
+    }
+
+    public Integer getLabel() {
+        return label;
+    }
+
+    public Integer getAndIncrementLabel() {
+        return label++;
+    }
+
+    public String getPrefixedVapor(String str) {
+        if (state == State.Root || state == State.Class) {
+            return str;
+        } else {
+            return "  " + str;
+        }
+    }
 
     public Context staticFunction() {
         this.staticFunction = true;
@@ -86,6 +148,9 @@ public class Context {
             }
         } else if (state == State.Class) {
             state = State.Function;
+            temp = 0;
+            label = 0;
+            parameterList = "";
         } else if (state == State.Function) {
             return false;
         }
