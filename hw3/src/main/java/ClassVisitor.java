@@ -62,7 +62,7 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
                     propertyOffsets.put(property, offset);
                     maxPropertyOffset = maxPropertyOffset > offset ? maxPropertyOffset : offset;
                 }
-                context.propertyCounts.put(name, propertyOffsets.size() + context.propertyOffsets.get(parent).size());
+                context.propertyCounts.put(name, propertyOffsets.size() + context.propertyCounts.get(parent));
             } else { // base class
                 for (final String method : methodOrder) {
                     methodOffsets.put(method, methodOffsets.get(method) * 4);
