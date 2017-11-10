@@ -123,6 +123,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(ClassExtendsDeclaration n, Context context) {
         context.name(n.f1.f0.tokenImage).push();
+        n.f5.accept(this, context);
         n.f6.accept(this, context);
         context.pop();
     }
