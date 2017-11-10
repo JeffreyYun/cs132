@@ -656,8 +656,12 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f1 -> Expression()
      */
     public void visit(NotExpression n, Context context) {
-        n.f1.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f1.accept(this, context.unRHS());
         String result = context.expressionResult();
+        if (wasRHS) {
+            context.RHS();
+        }
         resolveExpression(context, "Eq(0 " + result + ")");
     }
 
