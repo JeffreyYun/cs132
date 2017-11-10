@@ -15,6 +15,7 @@ public class Context {
     // In some universe where I cared, these would all be refactored into one data class
     public HashMap<String, HashMap<String, String>> propertyTypes = new HashMap<>();
     public HashMap<String, HashMap<String, Integer>> propertyOffsets = new HashMap<>();
+    public HashMap<String, Integer> propertyCounts = new HashMap<>();
     public HashMap<String, HashMap<String, String>> methodTypes = new HashMap<>();
     public HashMap<String, ArrayList<String>> methodOrders = new HashMap<>();
     public HashMap<String, HashMap<String, Integer>> methodOffsets = new HashMap<>();
@@ -32,6 +33,8 @@ public class Context {
     private boolean RHS;
     private String expressionResult;
     private String parameterList;
+    private String expressionType;
+    public int indentLevel = 0;
 
     public Context RHS() {
         RHS = true;
@@ -65,6 +68,15 @@ public class Context {
         return parameterList;
     }
 
+    public Context expressionType(String expressionType) {
+        this.expressionType = expressionType;
+        return this;
+    }
+
+    public String expressionType() {
+        return expressionType;
+    }
+
     public Integer getTemp() {
         return temp;
     }
@@ -82,10 +94,14 @@ public class Context {
     }
 
     public String getPrefixedVapor(String str) {
+        String prefix = "";
+        for (int i = 0; i < indentLevel; i++) {
+            prefix = prefix + "  ";
+        }
         if (state == State.Root || state == State.Class) {
-            return str;
+            return prefix + str;
         } else {
-            return "  " + str;
+            return "  " + prefix + str;
         }
     }
 
@@ -149,7 +165,6 @@ public class Context {
         } else if (state == State.Class) {
             state = State.Function;
             temp = 0;
-            label = 0;
             parameterList = "";
         } else if (state == State.Function) {
             return false;
@@ -307,5 +322,9 @@ public class Context {
             }
         }
         return null;
+    }
+
+    public boolean isLocal(String identifier) {
+        return locals.containsKey(identifier);
     }
 }

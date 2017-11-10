@@ -2,8 +2,16 @@ import syntaxtree.*;
 import visitor.GJVoidDepthFirst;
 
 public class Vaporifier extends GJVoidDepthFirst<Context> {
+    private boolean malloc = false;
+    private boolean nullCheck = false;
+    private boolean boundsCheck = false;
+
     private void emit(Context context, String vapor) {
         System.out.println(context.getPrefixedVapor(vapor));
+    }
+
+    private String t(Integer number) {
+        return "t." + number.toString();
     }
 
     //
@@ -19,6 +27,33 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         n.f0.accept(this, context);
         n.f1.accept(this, context);
         n.f2.accept(this, context);
+        if (malloc) {
+            System.out.println("func malloc(size)");
+            System.out.println("  temp = Add(1 size)");
+            System.out.println("  temp = MulS(4 temp)");
+            System.out.println("  temp = HeapAllocZ(temp)");
+            System.out.println("  [temp] = size");
+            System.out.println("  ret temp");
+            System.out.println();
+        }
+        if (nullCheck) {
+            System.out.println("func nullCheck(ptr)");
+            System.out.println("  if ptr goto :notnull");
+            System.out.println("    Error(\"null pointer\")");
+            System.out.println("  notnull:");
+            System.out.println("  ret");
+            System.out.println();
+        }
+        if (boundsCheck) {
+            System.out.println("func boundsCheck(ptr index)");
+            System.out.println("  size = [ptr]");
+            System.out.println("  ib = Lt(index size)");
+            System.out.println("  if ib goto :inbounds");
+            System.out.println("    Error(\"array index out of bounds\")");
+            System.out.println("  inbounds:");
+            System.out.println("  ret");
+            System.out.println();
+        }
     }
 
     /**
@@ -45,6 +80,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         context.name(n.f1.f0.tokenImage).push();
         System.out.println("func Main()");
         context.push();
+        n.f14.accept(this, context);
         n.f15.accept(this, context);
         emit(context, "ret");
         context.pop();
@@ -70,6 +106,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(ClassDeclaration n, Context context) {
         context.name(n.f1.f0.tokenImage).push();
+        n.f3.accept(this, context);
         n.f4.accept(this, context);
         context.pop();
     }
@@ -96,9 +133,16 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> ";"
      */
     public void visit(VarDeclaration n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
-        n.f2.accept(this, context);
+        TypeChecker typeChecker = new TypeChecker();
+        if (context.state == Context.State.Class) {
+            if (context.getField(n.f1.f0.tokenImage) != null) {
+            } else if (!context.addField(n.f1.f0.tokenImage, n.f0.accept(typeChecker, context))) {
+            }
+        } else if (context.state == Context.State.Function) {
+            if (context.getLocal(n.f1.f0.tokenImage) != null) {
+            } else if (!context.addLocal(n.f1.f0.tokenImage, n.f0.accept(typeChecker, context))) {
+            }
+        }
     }
 
     /**
@@ -117,10 +161,11 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f12 -> "}"
      */
     public void visit(MethodDeclaration n, Context context) {
+        context.push();
         n.f4.accept(this, context);
         String otherVariables = context.parameterList();
-        emit(context, "func " + context.name() + "." + n.f2.f0.tokenImage + "(this" + otherVariables + ")");
-        context.push();
+        System.out.println("func " + context.name() + "." + n.f2.f0.tokenImage + "(this" + otherVariables + ")");
+        n.f7.accept(this, context);
         n.f8.accept(this, context);
         n.f10.accept(this, context);
         String result = context.expressionResult();
@@ -143,7 +188,9 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f1 -> Identifier()
      */
     public void visit(FormalParameter n, Context context) {
+        TypeChecker typeChecker = new TypeChecker();
         context.parameterList(context.parameterList() + " " + n.f1.f0.tokenImage);
+        context.addLocal(n.f1.f0.tokenImage, n.f0.accept(typeChecker, context));
     }
 
     /**
@@ -207,9 +254,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> "}"
      */
     public void visit(Block n, Context context) {
-        n.f0.accept(this, context);
         n.f1.accept(this, context);
-        n.f2.accept(this, context);
     }
 
     /**
@@ -219,12 +264,12 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f3 -> ";"
      */
     public void visit(AssignmentStatement n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
+        n.f0.accept(this, context.RHS());
+        String result = context.expressionResult();
+        context.unRHS();
         n.f2.accept(this, context.RHS());
         context.unRHS();
-        n.f3.accept(this, context);
-        emit(context, n.f0.f0.tokenImage + " = " + context.expressionResult());
+        emit(context, result + " = " + context.expressionResult());
     }
 
     /**
@@ -238,12 +283,17 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(ArrayAssignmentStatement n, Context context) {
         n.f0.accept(this, context);
-        n.f1.accept(this, context);
+        String array = context.expressionResult();
         n.f2.accept(this, context);
-        n.f3.accept(this, context);
-        n.f4.accept(this, context);
+        String index = context.expressionResult();
         n.f5.accept(this, context);
-        n.f6.accept(this, context);
+        String value = context.expressionResult();
+        emit(context, "call :boundsCheck(" + array + " " + index + ")");
+        Integer offset = context.getAndIncrementTemp();
+        emit(context, t(offset) + " = " + "Add(1 " + index + ")");
+        emit(context, t(offset) + " = " + "MulS(4 " + t(offset) + ")");
+        emit(context, t(offset) + " = " + "Add(" + array + " " + t(offset) + ")");
+        emit(context, "[" + t(offset) + "] = " + value);
     }
 
     /**
@@ -256,13 +306,17 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f6 -> Statement()
      */
     public void visit(IfStatement n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
-        n.f2.accept(this, context);
-        n.f3.accept(this, context);
+        n.f2.accept(this, context.unRHS());
+        String result = context.expressionResult();
+        Integer label = context.getAndIncrementLabel();
+        emit(context, "if0 " + result + " goto :if" + label.toString() + "_else");
+        context.indentLevel++;
         n.f4.accept(this, context);
-        n.f5.accept(this, context);
+        emit(context, "goto :if" + label.toString() + "_end");
+        context.indentLevel--;
+        emit(context, "if" + label.toString() + "_else:");
         n.f6.accept(this, context);
+        emit(context, "if" + label.toString() + "_end:");
     }
 
     /**
@@ -273,11 +327,16 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f4 -> Statement()
      */
     public void visit(WhileStatement n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
+        Integer label = context.getAndIncrementLabel();
+        emit(context, "while" + label.toString() + "_start:");
+        context.indentLevel++;
         n.f2.accept(this, context);
-        n.f3.accept(this, context);
+        String result = context.expressionResult();
+        emit(context, "if0 " + result + " goto :while" + label.toString() + "_end");
         n.f4.accept(this, context);
+        emit(context, "goto :while" + label.toString() + "_start");
+        context.indentLevel--;
+        emit(context, "while" + label.toString() + "_end:");
     }
 
     /**
@@ -288,12 +347,18 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f4 -> ";"
      */
     public void visit(PrintStatement n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
         n.f2.accept(this, context);
         emit(context, "PrintIntS(" + context.expressionResult() + ")");
-        n.f3.accept(this, context);
-        n.f4.accept(this, context);
+    }
+
+    private void resolveExpression(Context context, String value) {
+        if (context.isRHS()) {
+            context.expressionResult(value);
+        } else {
+            Integer result = context.getAndIncrementTemp();
+            emit(context, t(result) + " = " + value);
+            context.expressionResult(t(result));
+        }
     }
 
     /**
@@ -307,6 +372,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      *       | MessageSend()
      *       | PrimaryExpression()
      */
+
     public void visit(Expression n, Context context) {
         n.f0.accept(this, context);
     }
@@ -317,18 +383,21 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> PrimaryExpression()
      */
     public void visit(AndExpression n, Context context) {
-        n.f0.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
-        n.f1.accept(this, context);
         n.f2.accept(this, context);
         String result2 = context.expressionResult();
         Integer isFalseResult1 = context.getAndIncrementTemp();
         Integer isFalseResult2 = context.getAndIncrementTemp();
         Integer sumFalses = context.getAndIncrementTemp();
-        emit(context, "t." + isFalseResult1.toString() + " = Lt(" + result1 + " 1)");
-        emit(context, "t." + isFalseResult2.toString() + " = Lt(" + result2 + " 1)");
-        emit(context, "t." + sumFalses.toString() + " = Add(t." + isFalseResult1.toString() + " t." + isFalseResult2.toString() +")");
-        context.expressionResult("Eq(t." + sumFalses.toString() + " 0)");
+        emit(context, t(isFalseResult1) + " = Lt(" + result1 + " 1)");
+        emit(context, t(isFalseResult2) + " = Lt(" + result2 + " 1)");
+        emit(context, t(sumFalses) + " = Add(" + t(isFalseResult1) + " " + t(isFalseResult2) +")");
+        if (wasRHS) {
+            context.RHS();
+        }
+        resolveExpression(context, "Eq(" + t(sumFalses) + " 0)");
     }
 
     /**
@@ -337,12 +406,16 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> PrimaryExpression()
      */
     public void visit(CompareExpression n, Context context) {
-        n.f0.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
         n.f1.accept(this, context);
         n.f2.accept(this, context);
         String result2 = context.expressionResult();
-        context.expressionResult("Lt(" + result1 + " " + result2 + ")");
+        if (wasRHS) {
+            context.RHS();
+        }
+        resolveExpression(context, "LtS(" + result1 + " " + result2 + ")");
     }
 
     /**
@@ -351,18 +424,15 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> PrimaryExpression()
      */
     public void visit(PlusExpression n, Context context) {
-        Integer result = context.getAndIncrementTemp();
-        n.f0.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
-        n.f1.accept(this, context);
         n.f2.accept(this, context);
         String result2 = context.expressionResult();
-        if (context.isRHS()) {
-            context.expressionResult("Add(" + result1 + " " + result2 + ")");
-        } else {
-            emit(context, "t." + result.toString() + " = Add(" + result1 + " " + result2 + ")");
-            context.expressionResult("t." + result);
+        if (wasRHS) {
+            context.RHS();
         }
+        resolveExpression(context, "Add(" + result1 + " " + result2 + ")");
     }
 
     /**
@@ -371,18 +441,15 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> PrimaryExpression()
      */
     public void visit(MinusExpression n, Context context) {
-        Integer result = context.getAndIncrementTemp();
-        n.f0.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
-        n.f1.accept(this, context);
         n.f2.accept(this, context);
         String result2 = context.expressionResult();
-        if (context.isRHS()) {
-            context.expressionResult("Sub(" + result1 + " " + result2 + ")");
-        } else {
-            emit(context, "t." + result.toString() + " = Sub(" + result1 + " " + result2 + ")");
-            context.expressionResult("t." + result);
+        if (wasRHS) {
+            context.RHS();
         }
+        resolveExpression(context, "Sub(" + result1 + " " + result2 + ")");
     }
 
     /**
@@ -391,18 +458,15 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> PrimaryExpression()
      */
     public void visit(TimesExpression n, Context context) {
-        Integer result = context.getAndIncrementTemp();
-        n.f0.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
-        n.f1.accept(this, context);
         n.f2.accept(this, context);
         String result2 = context.expressionResult();
-        if (context.isRHS()) {
-            context.expressionResult("MulS(" + result1 + " " + result2 + ")");
-        } else {
-            emit(context, "t." + result.toString() + " = MulS(" + result1 + " " + result2 + ")");
-            context.expressionResult("t." + result);
+        if (wasRHS) {
+            context.RHS();
         }
+        resolveExpression(context, "MulS(" + result1 + " " + result2 + ")");
     }
 
     /**
@@ -412,10 +476,23 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f3 -> "]"
      */
     public void visit(ArrayLookup n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
+        nullCheck = true;
+        boundsCheck = true;
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
+        String array = context.expressionResult();
+        emit(context, "call :nullCheck(" + array + ")");
         n.f2.accept(this, context);
-        n.f3.accept(this, context);
+        String index = context.expressionResult();
+        emit(context, "call :boundsCheck(" + array + " " + index + ")");
+        int offset = context.getAndIncrementTemp();
+        emit(context, t(offset) + " = " + "Add(1 " + index + ")");
+        emit(context, t(offset) + " = " + "MulS(4 " + t(offset) + ")");
+        emit(context, t(offset) + " = " + "Add(" + array + " " + t(offset) + ")");
+        if (wasRHS) {
+            context.RHS();
+        }
+        resolveExpression(context, "[" + t(offset) + "]");
     }
 
     /**
@@ -424,9 +501,15 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> "length"
      */
     public void visit(ArrayLength n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
-        n.f2.accept(this, context);
+        nullCheck = true;
+        boolean wasRHS = context.isRHS();
+        n.f0.accept(this, context.unRHS());
+        String array = context.expressionResult();
+        if (wasRHS) {
+            context.RHS();
+        }
+        emit(context, "call :nullCheck(" + array + ")");
+        resolveExpression(context, "[" + array + "]");
     }
 
     /**
@@ -438,12 +521,18 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f5 -> ")"
      */
     public void visit(MessageSend n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
-        n.f2.accept(this, context);
-        n.f3.accept(this, context);
-        n.f4.accept(this, context);
-        n.f5.accept(this, context);
+        nullCheck = true;
+        n.f0.accept(this, context.unRHS());
+        String pointer = context.expressionResult();
+        Integer temp = context.getAndIncrementTemp();
+        emit(context, t(temp) + " = [" + pointer + "]");
+        emit(context, t(temp) + " = [" + t(temp) + " + " + context.lookupMethodOffset(context.expressionType(), n.f2.f0.tokenImage) + "]");
+        String rest = "";
+        if (n.f4.present()) {
+            n.f4.accept(this, context);
+            rest = context.expressionResult();
+        }
+        resolveExpression(context, "call " + t(temp) + "(" + pointer + rest + ")");
     }
 
     /**
@@ -452,6 +541,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(ExpressionList n, Context context) {
         n.f0.accept(this, context);
+        context.expressionResult(" " + context.expressionResult());
         n.f1.accept(this, context);
     }
 
@@ -460,8 +550,9 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f1 -> Expression()
      */
     public void visit(ExpressionRest n, Context context) {
-        n.f0.accept(this, context);
+        String saved = context.expressionResult();
         n.f1.accept(this, context);
+        context.expressionResult(saved + " " + context.expressionResult());
     }
 
     /**
@@ -484,7 +575,6 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(IntegerLiteral n, Context context) {
         context.expressionResult(n.f0.tokenImage);
-        n.f0.accept(this, context);
     }
 
     /**
@@ -492,7 +582,6 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(TrueLiteral n, Context context) {
         context.expressionResult("1");
-        n.f0.accept(this, context);
     }
 
     /**
@@ -500,25 +589,30 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(FalseLiteral n, Context context) {
         context.expressionResult("0");
-        n.f0.accept(this, context);
     }
 
     /**
      * f0 -> <IDENTIFIER>
      */
     public void visit(Identifier n, Context context) {
-        if (context.isRHS()) {
-            context.expressionResult(n.f0.tokenImage);
+        String type = context.lookupIdentifier(n.f0.tokenImage);
+        context.expressionType(type);
+        if (context.isLocal(n.f0.tokenImage)) {
+            resolveExpression(context, n.f0.tokenImage);
+        } else {
+            Integer offset = context.lookupPropertyOffset(context.name(), n.f0.tokenImage);
+            Integer result = context.getAndIncrementTemp();
+            emit(context, t(result) + " = this");
+            resolveExpression(context, "[" + t(result) + " + " + offset + "]");
         }
-        n.f0.accept(this, context);
     }
 
     /**
      * f0 -> "this"
      */
     public void visit(ThisExpression n, Context context) {
-        emit(context, "t." + context.getAndIncrementTemp().toString() + " = " + n.f0.tokenImage);
-        n.f0.accept(this, context);
+        context.expressionResult(n.f0.tokenImage);
+        context.expressionType(context.name());
     }
 
     /**
@@ -529,11 +623,12 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f4 -> "]"
      */
     public void visit(ArrayAllocationExpression n, Context context) {
-        n.f0.accept(this, context);
-        n.f1.accept(this, context);
-        n.f2.accept(this, context);
+        malloc = true;
         n.f3.accept(this, context);
-        n.f4.accept(this, context);
+        String result = context.expressionResult();
+        Integer array = context.getAndIncrementTemp();
+        emit(context, t(array) + " = " + "call :malloc(" + result + ")");
+        resolveExpression(context, t(array));
     }
 
     /**
@@ -543,7 +638,12 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f3 -> ")"
      */
     public void visit(AllocationExpression n, Context context) {
-        // do class stuff here
+        Integer result = context.getAndIncrementTemp();
+        emit(context, t(result) + " = " + "HeapAllocZ(" + String.valueOf((context.propertyCounts.get(n.f1.f0.tokenImage) + 1) * 4) + ")");
+        emit(context, "call :nullCheck(" + t(result) + ")");
+        emit(context, "[" + t(result) + "] = :vmt_" + n.f1.f0.tokenImage);
+        resolveExpression(context, t(result));
+        context.expressionType(n.f1.f0.tokenImage);
     }
 
     /**
@@ -551,8 +651,9 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f1 -> Expression()
      */
     public void visit(NotExpression n, Context context) {
-        n.f0.accept(this, context);
         n.f1.accept(this, context);
+        String result = context.expressionResult();
+        resolveExpression(context, "Eq(0 " + result + ")");
     }
 
     /**
@@ -561,8 +662,6 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      * f2 -> ")"
      */
     public void visit(BracketExpression n, Context context) {
-        n.f0.accept(this, context);
         n.f1.accept(this, context);
-        n.f2.accept(this, context);
     }
 }

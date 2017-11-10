@@ -62,6 +62,7 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
                     propertyOffsets.put(property, offset);
                     maxPropertyOffset = maxPropertyOffset > offset ? maxPropertyOffset : offset;
                 }
+                context.propertyCounts.put(name, propertyOffsets.size() + context.propertyOffsets.get(parent).size());
             } else { // base class
                 for (final String method : methodOrder) {
                     methodOffsets.put(method, methodOffsets.get(method) * 4);
@@ -71,6 +72,7 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
                     propertyOffsets.put(property, offset);
                     maxPropertyOffset = maxPropertyOffset > offset ? maxPropertyOffset : offset;
                 }
+                context.propertyCounts.put(name, propertyOffsets.size());
             }
             initializedClasses.add(name);
             maxPropertyOffsets.put(name, maxPropertyOffset);
@@ -90,9 +92,6 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
     private void emitFunctionTables(Context context) {
         for (final String name : context.classes) {
             final HashMap<String, Integer> methodOffsets = context.methodOffsets.get(name);
-            if (methodOffsets.size() == 0) {
-                continue;
-            }
             System.out.println("const vmt_" + name);
             final String prefix = "  :";
             final ArrayList<String> methods = new ArrayList<>();
