@@ -505,10 +505,10 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         boolean wasRHS = context.isRHS();
         n.f0.accept(this, context.unRHS());
         String array = context.expressionResult();
+        emit(context, "call :nullCheck(" + array + ")");
         if (wasRHS) {
             context.RHS();
         }
-        emit(context, "call :nullCheck(" + array + ")");
         resolveExpression(context, "[" + array + "]");
     }
 
