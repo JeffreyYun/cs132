@@ -625,10 +625,14 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
      */
     public void visit(ArrayAllocationExpression n, Context context) {
         malloc = true;
-        n.f3.accept(this, context);
+        boolean wasRHS = context.isRHS();
+        n.f3.accept(this, context.unRHS());
         String result = context.expressionResult();
         Integer array = context.getAndIncrementTemp();
         emit(context, t(array) + " = " + "call :malloc(" + result + ")");
+        if (wasRHS) {
+            context.RHS();
+        }
         resolveExpression(context, t(array));
     }
 
