@@ -387,17 +387,23 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         boolean wasRHS = context.isRHS();
         n.f0.accept(this, context.unRHS());
         String result1 = context.expressionResult();
-        n.f2.accept(this, context);
-        String result2 = context.expressionResult();
         Integer isFalseResult1 = context.getAndIncrementTemp();
         Integer isFalseResult2 = context.getAndIncrementTemp();
+        Integer shortCircuitVar = context.getAndIncrementTemp();
         Integer sumFalses = context.getAndIncrementTemp();
-        emit(context, t(isFalseResult1) + " = Lt(" + result1 + " 1)");
-        emit(context, t(isFalseResult2) + " = Lt(" + result2 + " 1)");
-        emit(context, t(sumFalses) + " = Add(" + t(isFalseResult1) + " " + t(isFalseResult2) +")");
+        Integer shortCircuitLabel = context.getAndIncrementLabel();
+        emit(context, t(isFalseResult1) + " = Eq(" + result1 + " 0)");
+        emit(context, t(isFalseResult2) + " = 1");
+        emit(context, t(shortCircuitVar) + " = Eq(" + t(isFalseResult1) + " 0)");
+        emit(context, "if0 " + t(shortCircuitVar) + " goto :shortCircuit_" + shortCircuitLabel);
+        n.f2.accept(this, context);
+        String result2 = context.expressionResult();
+        emit(context, t(isFalseResult2) + " = Eq(" + result2 + " 0)");
         if (wasRHS) {
             context.RHS();
         }
+        emit(context, "shortCircuit_" + shortCircuitLabel + ":");
+        emit(context, t(sumFalses) + " = Add(" + t(isFalseResult1) + " " + t(isFalseResult2) +")");
         resolveExpression(context, "Eq(" + t(sumFalses) + " 0)");
     }
 
