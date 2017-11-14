@@ -37,8 +37,8 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
         final ArrayList<String> methodOrder = context.methodOrders.get(name);
         final HashMap<String, Integer> methodOffsets = context.methodOffsets.get(name);
         final HashMap<String, Integer> propertyOffsets = context.propertyOffsets.get(name);
-        int maxPropertyOffset = 0;
         if (!initializedClasses.contains(name)) {
+            int maxPropertyOffset = 0;
             if (context.subtypes.containsKey(name)) {
                 String parent = context.subtypes.get(name);
                 if (!initializedClasses.contains(parent)) {
@@ -57,6 +57,7 @@ public class ClassVisitor extends GJDepthFirst<Boolean, Context> {
                     methodOffsets.put(parentMethod, parentMethodOffsets.get(parentMethod));
                 }
                 offsetBase = maxPropertyOffsets.get(parent);
+                maxPropertyOffset = offsetBase;
                 for (final String property : propertyOffsets.keySet()) {
                     int offset = (propertyOffsets.get(property) * 4) + offsetBase;
                     propertyOffsets.put(property, offset);
