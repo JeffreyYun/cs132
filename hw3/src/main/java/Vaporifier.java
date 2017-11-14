@@ -268,8 +268,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         n.f0.accept(this, context.RHS());
         String result = context.expressionResult();
         context.unRHS();
-        n.f2.accept(this, context.RHS());
-        context.unRHS();
+        n.f2.accept(this, context);
         emit(context, result + " = " + context.expressionResult());
     }
 
