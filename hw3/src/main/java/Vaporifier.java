@@ -38,20 +38,20 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         }
         if (nullCheck) {
             System.out.println("func nullCheck(ptr)");
-            System.out.println("  if ptr goto :notnull");
-            System.out.println("    Error(\"null pointer\")");
-            System.out.println("  notnull:");
+            System.out.println("  if0 ptr goto :null");
             System.out.println("  ret");
+            System.out.println("  null:");
+            System.out.println("    Error(\"null pointer\")");
             System.out.println();
         }
         if (boundsCheck) {
             System.out.println("func boundsCheck(ptr index)");
             System.out.println("  size = [ptr]");
             System.out.println("  ib = Lt(index size)");
-            System.out.println("  if ib goto :inbounds");
-            System.out.println("    Error(\"array index out of bounds\")");
-            System.out.println("  inbounds:");
+            System.out.println("  if0 ib goto :oobounds");
             System.out.println("  ret");
+            System.out.println("  oobounds:");
+            System.out.println("    Error(\"array index out of bounds\")");
             System.out.println();
         }
     }
