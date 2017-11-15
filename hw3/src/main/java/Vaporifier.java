@@ -32,11 +32,12 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
             System.out.println("  temp = Add(1 size)");
             System.out.println("  temp = MulS(4 temp)");
             System.out.println("  temp = HeapAllocZ(temp)");
+            System.out.println("  call :nullCheck(temp)");
             System.out.println("  [temp] = size");
             System.out.println("  ret temp");
             System.out.println();
         }
-        if (nullCheck) {
+        if (nullCheck || malloc) {
             System.out.println("func nullCheck(ptr)");
             System.out.println("  if0 ptr goto :null");
             System.out.println("  ret");
@@ -47,8 +48,10 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         if (boundsCheck) {
             System.out.println("func boundsCheck(ptr index)");
             System.out.println("  size = [ptr]");
-            System.out.println("  ib = Lt(index size)");
+            System.out.println("  ib = LtS(index size)");
             System.out.println("  if0 ib goto :oobounds");
+            System.out.println("  lz = LtS(index 0)");
+            System.out.println("  if lz goto :oobounds");
             System.out.println("  ret");
             System.out.println("  oobounds:");
             System.out.println("    Error(\"array index out of bounds\")");
