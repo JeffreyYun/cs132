@@ -146,6 +146,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
             if (context.getLocal(n.f1.f0.tokenImage) != null) {
             } else if (!context.addLocal(n.f1.f0.tokenImage, n.f0.accept(typeChecker, context))) {
             }
+            emit(context, n.f1.f0.tokenImage + " = 0");
         }
     }
 
@@ -533,6 +534,7 @@ public class Vaporifier extends GJVoidDepthFirst<Context> {
         nullCheck = true;
         n.f0.accept(this, context.unRHS());
         String pointer = context.expressionResult();
+        emit(context, "call :nullCheck(" + pointer + ")");
         Integer temp = context.getAndIncrementTemp();
         emit(context, t(temp) + " = [" + pointer + "]");
         emit(context, t(temp) + " = [" + t(temp) + " + " + context.lookupMethodOffset(context.expressionType(), n.f2.f0.tokenImage) + "]");
