@@ -3,12 +3,13 @@ import cs132.vapor.ast.VFunction;
 import cs132.vapor.ast.VVarRef;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.*;
 
 public class LSRAInfo {
-    static final boolean debug = false;
-    static final IndentPrinter indentPrinter = new IndentPrinter(new PrintWriter(System.out), "  ");
-
+    static final boolean debug = true;
+    static StringWriter stringWriter = new StringWriter();
+    static IndentPrinter indentPrinter = new IndentPrinter(stringWriter, "  ");
 
     public class LiveIn {
         public int start;
@@ -68,39 +69,42 @@ public class LSRAInfo {
         currentTemporary = 0;
         currentSaved = 0;
         currentParameter = 0;
+        stringWriter = new StringWriter();
+        indentPrinter = new IndentPrinter(stringWriter, "  ");
     }
 
     public void setCurrentLine(int currentLine) {
         this.currentLine = currentLine;
     }
 
-    public void startLiveIn(String variable) {
+    public void startLiveIn(String variable) throws RuntimeException {
         if (!currentLiveIns.containsKey(variable)) {
             currentLiveIns.put(variable, new ArrayList<>());
         }
-        currentLiveIns.get(variable).add(new LiveIn(currentLine, currentLine));
+        currentLinearRanges.putIfAbsent(variable, new LSRAInfo.LinearRange(variable, currentLine, -1));
         currentVariables.add(variable);
+        ArrayList<LiveIn> liveIns = currentLiveIns.get(variable);
+        liveIns.add(new LiveIn(currentLine + 1, currentLine + 1));
     }
 
-    public void extendLiveIn(String variable) throws RuntimeException {
+    public void extendLiveIn(String variable) {
         ArrayList<LiveIn> liveIns = currentLiveIns.get(variable);
-        liveIns.get(liveIns.size() - 1).end = currentLine;
+        LiveIn current = liveIns.get(liveIns.size() - 1);
+        current.end = currentLine;
     }
 
     public void calculateLinearRanges() {
         for (String variable : currentVariables) {
             ArrayList<LiveIn> liveIns = currentLiveIns.get(variable);
             if (liveIns != null) {
-                int start = -1;
                 int end = -1;
                 for (LiveIn liveIn : liveIns) {
-                    if (liveIn.start != liveIn.end) {
-                        start = start == -1 ? liveIn.start : start;
-                        end = liveIn.end;
+                    if (liveIn.start != -1 && liveIn.end != -1) {
+                        end = end > liveIn.end ? end : liveIn.end;
                     }
                 }
-                if (start != end) {
-                    currentLinearRanges.put(variable, new LinearRange(variable, start, end));
+                if (end != -1) {
+                    currentLinearRanges.get(variable).end = end;
                 }
             }
         }
@@ -108,9 +112,43 @@ public class LSRAInfo {
 
     public void calculateCalleeSavedVariables() {
         currentCrossCalls.sort(Comparator.comparingInt((c -> c.start)));
-        for (LinearRange linearRange : currentCrossCalls) {
-
+        class interval {
+            int point;
+            boolean start;
+            interval(int point, boolean start) {
+                this.point = point;
+                this.start = start;
+            }
         }
+        ArrayList<interval> intervals = new ArrayList<>();
+        for (LinearRange linearRange : currentCrossCalls) {
+            intervals.add(new interval(linearRange.start, true));
+            intervals.add(new interval(linearRange.end, false));
+        }
+        intervals.sort((c1, c2) -> {
+            if (c1.point < c2.point) {
+                return -1;
+            } else if (c1.point > c2.point) {
+                return 1;
+            } else if (c1.start && !c2.start) {
+                return 1;
+            } else if (c2.start && !c1.start) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
+        int max = 0;
+        int cur = 0;
+        for (interval i : intervals) {
+            if (i.start) {
+                cur++;
+            } else {
+                cur--;
+            }
+            max = max > cur ? max : cur;
+        }
+        currentFunctionInfo.local = max;
     }
 
     public HashMap<String, String> allocations = new HashMap<>();

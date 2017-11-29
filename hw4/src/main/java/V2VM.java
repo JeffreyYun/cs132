@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.util.ArrayList;
 
 public class V2VM {
     public static void main(String[] args) {
@@ -23,23 +24,33 @@ public class V2VM {
                 vInstr.accept(lsraInfo, new LinearRangeVisitor());
             }
             lsraInfo.currentFunctionInfo.in = vFunction.params.length < 5 ? 0 : vFunction.params.length - 4;
+            if (LSRAInfo.debug) {
+                for (String variable : lsraInfo.currentVariables) {
+                    System.out.print(variable + " ");
+                    ArrayList<LSRAInfo.LiveIn> liveIns = lsraInfo.currentLiveIns.get(variable);
+                    if (liveIns != null) {
+                        for (LSRAInfo.LiveIn liveIn : liveIns) {
+                            System.out.print(liveIn.start + "-" + liveIn.end + " ");
+                        }
+                    }
+                    System.out.println();
+                }
+            }
             lsraInfo.calculateLinearRanges();
             for (VInstr vInstr : vFunction.body) {
                 lsraInfo.setCurrentLine(vInstr.sourcePos.line);
                 vInstr.accept(lsraInfo, new CrossCallVisitor());
             }
             lsraInfo.calculateCalleeSavedVariables();
-            try {
-                LSRAInfo.indentPrinter.println("func " + vFunction.ident + " [in " + String.valueOf(lsraInfo.currentFunctionInfo.in) + ", out " + String.valueOf(lsraInfo.currentFunctionInfo.out) + ", local " + String.valueOf(lsraInfo.currentFunctionInfo.local) + "]");
-            } catch (IOException e) {
-                //
-            }
             LSRAInfo.indentPrinter.indent();
             for (VInstr vInstr : vFunction.body) {
                 lsraInfo.setCurrentLine(vInstr.sourcePos.line);
                 vInstr.accept(lsraInfo, new RegisterAllocatorVisitor());
             }
             LSRAInfo.indentPrinter.dedent();
+            LSRAInfo.stringWriter.flush();
+            System.out.println("func " + vFunction.ident + " [in " + String.valueOf(lsraInfo.currentFunctionInfo.in) + ", out " + String.valueOf(lsraInfo.currentFunctionInfo.out) + ", local " + String.valueOf(lsraInfo.currentFunctionInfo.local) + "]");
+            System.out.println(LSRAInfo.stringWriter.toString());
             lsraInfo.exitFunction();
         }
         if (lsraInfo.debug) {

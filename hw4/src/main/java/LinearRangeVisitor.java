@@ -1,5 +1,7 @@
 import cs132.vapor.ast.*;
 
+import java.util.ArrayList;
+
 public class LinearRangeVisitor extends VInstr.VisitorP<LSRAInfo, RuntimeException> {
     private void write(LSRAInfo lsraInfo, VOperand vOperand) {
         if (vOperand instanceof VVarRef.Local) {
@@ -28,6 +30,21 @@ public class LinearRangeVisitor extends VInstr.VisitorP<LSRAInfo, RuntimeExcepti
 
     @Override
     public void visit(LSRAInfo lsraInfo, VGoto vGoto) throws RuntimeException {
+        if (vGoto.target instanceof VAddr.Label) {
+            int dest = ((VAddr.Label) vGoto.target).label.getTarget().sourcePos.line;
+            if (dest < lsraInfo.currentLine) {
+                for (String variable : lsraInfo.currentVariables) {
+                    ArrayList<LSRAInfo.LiveIn> liveIns = lsraInfo.currentLiveIns.get(variable);
+                    if (liveIns != null) {
+                        for (LSRAInfo.LiveIn liveIn : liveIns) {
+                            if (liveIn.start < dest && liveIn.end > dest) {
+                                liveIn.end = lsraInfo.currentLine;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -69,7 +86,7 @@ public class LinearRangeVisitor extends VInstr.VisitorP<LSRAInfo, RuntimeExcepti
         read(lsraInfo, vMemWrite.source);
         if (vMemWrite.dest instanceof VMemRef.Global) {
             if (((VMemRef.Global) vMemWrite.dest).base instanceof VAddr.Var) {
-                write(lsraInfo, ((VAddr.Var) ((VMemRef.Global) vMemWrite.dest).base).var);
+                read(lsraInfo, ((VAddr.Var) ((VMemRef.Global) vMemWrite.dest).base).var);
             }
         }
     }

@@ -7,7 +7,6 @@ public class RegisterAllocatorVisitor extends VInstr.VisitorP<LSRAInfo, RuntimeE
     private void println(String string) {
         try {
             LSRAInfo.indentPrinter.println(string);
-            LSRAInfo.indentPrinter.flush();
         } catch (Exception ex) {
             // whateva
         }

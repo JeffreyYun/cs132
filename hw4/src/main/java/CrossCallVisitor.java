@@ -22,10 +22,10 @@ public class CrossCallVisitor extends VInstr.VisitorP<LSRAInfo, RuntimeException
     public void visit(LSRAInfo lsraInfo, VCall vCall) throws RuntimeException {
         for (String variable : lsraInfo.currentVariables) {
             ArrayList<LSRAInfo.LiveIn> liveIns = lsraInfo.currentLiveIns.get(variable);
+            LSRAInfo.LinearRange linearRange = lsraInfo.currentLinearRanges.get(variable);
             if (liveIns != null) {
                 for (LSRAInfo.LiveIn liveIn : liveIns) {
                     if (liveIn.start < vCall.sourcePos.line && liveIn.end > vCall.sourcePos.line) {
-                        LSRAInfo.LinearRange linearRange = lsraInfo.currentLinearRanges.get(variable);
                         if (!linearRange.crossCall) {
                             linearRange.crossCall = true;
                             lsraInfo.currentCrossCalls.add(linearRange);
