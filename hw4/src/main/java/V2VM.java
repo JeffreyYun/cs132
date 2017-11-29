@@ -1,9 +1,6 @@
 import cs132.util.ProblemException;
-import cs132.vapor.ast.VFunction;
-import cs132.vapor.ast.VInstr;
-import cs132.vapor.ast.VVarRef;
+import cs132.vapor.ast.*;
 import cs132.vapor.parser.VaporParser;
-import cs132.vapor.ast.VaporProgram;
 import cs132.vapor.ast.VBuiltIn.Op;
 
 import java.io.IOException;
@@ -43,8 +40,19 @@ public class V2VM {
             }
             lsraInfo.calculateCalleeSavedVariables();
             LSRAInfo.indentPrinter.indent();
+            int codeLabelIndex = 0;
+            int instructionIndex = 0;
             for (VInstr vInstr : vFunction.body) {
                 lsraInfo.setCurrentLine(vInstr.sourcePos.line);
+                instructionIndex++;
+                while (codeLabelIndex < vFunction.labels.length && vFunction.labels[codeLabelIndex].instrIndex < instructionIndex) {
+                    try {
+                        LSRAInfo.indentPrinter.println(vFunction.labels[codeLabelIndex].ident + ":");
+                    } catch (IOException ex) {
+                        //
+                    }
+                    codeLabelIndex++;
+                }
                 vInstr.accept(lsraInfo, new RegisterAllocatorVisitor());
             }
             LSRAInfo.indentPrinter.dedent();
