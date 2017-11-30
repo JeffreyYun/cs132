@@ -1,17 +1,41 @@
+import cs132.util.IndentPrinter;
 import cs132.util.ProblemException;
 import cs132.vapor.ast.*;
 import cs132.vapor.parser.VaporParser;
 import cs132.vapor.ast.VBuiltIn.Op;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.util.ArrayList;
 
 public class V2VM {
+    private static void println(String string) {
+        try {
+            LSRAInfo.indentPrinter.println(string);
+        } catch (Exception ex) {
+            //
+        }
+    }
+
     public static void main(String[] args) {
         VaporProgram vaporProgram = parseVapor(System.in, System.err);
+
+        for (VDataSegment vDataSegment : vaporProgram.dataSegments) {
+            if (vDataSegment.mutable) {
+                println("var " + vDataSegment.ident);
+            } else {
+                println("const " + vDataSegment.ident);
+            }
+            LSRAInfo.indentPrinter.indent();
+            for (VOperand.Static vOperand : vDataSegment.values) {
+                println(vOperand.toString());
+            }
+            LSRAInfo.indentPrinter.dedent();
+        }
+        LSRAInfo.stringWriter.flush();
+        System.out.println(LSRAInfo.stringWriter.toString());
+        LSRAInfo.stringWriter = new StringWriter();
+        LSRAInfo.indentPrinter = new IndentPrinter(LSRAInfo.stringWriter, "  ");
+
         LSRAInfo lsraInfo = new LSRAInfo();
         for (VFunction vFunction : vaporProgram.functions) {
             lsraInfo.setCurrentLine(vFunction.sourcePos.line);
@@ -42,15 +66,26 @@ public class V2VM {
             LSRAInfo.indentPrinter.indent();
             int codeLabelIndex = 0;
             int instructionIndex = 0;
+            for (int i = 0; i < lsraInfo.currentFunctionInfo.local && i < lsraInfo.saveds.size(); i++) {
+                println("local[" + i + "] = " + lsraInfo.saveds.get(i));
+            }
+            lsraInfo.setCurrentLine(vFunction.sourcePos.line);
+            for (int i = 0; i < vFunction.params.length; i++) {
+                VVarRef.Local local = vFunction.params[i];
+                String result = RegisterAllocatorVisitor.alloc(lsraInfo, local);
+                String param = result + " = ";
+                if (i < 4) {
+                    param += "$a" + i;
+                } else {
+                    param += "in[" + (i - 4) + "]";
+                }
+                println(param);
+            }
             for (VInstr vInstr : vFunction.body) {
                 lsraInfo.setCurrentLine(vInstr.sourcePos.line);
                 instructionIndex++;
                 while (codeLabelIndex < vFunction.labels.length && vFunction.labels[codeLabelIndex].instrIndex < instructionIndex) {
-                    try {
-                        LSRAInfo.indentPrinter.println(vFunction.labels[codeLabelIndex].ident + ":");
-                    } catch (IOException ex) {
-                        //
-                    }
+                    println(vFunction.labels[codeLabelIndex].ident + ":");
                     codeLabelIndex++;
                 }
                 vInstr.accept(lsraInfo, new RegisterAllocatorVisitor());
@@ -59,18 +94,18 @@ public class V2VM {
             LSRAInfo.stringWriter.flush();
             System.out.println("func " + vFunction.ident + " [in " + String.valueOf(lsraInfo.currentFunctionInfo.in) + ", out " + String.valueOf(lsraInfo.currentFunctionInfo.out) + ", local " + String.valueOf(lsraInfo.currentFunctionInfo.local) + "]");
             System.out.println(LSRAInfo.stringWriter.toString());
-            lsraInfo.exitFunction();
-        }
-        if (lsraInfo.debug) {
-            for (String function : lsraInfo.functionsInfo.keySet()) {
-                LSRAInfo.FunctionInfo functionInfo = lsraInfo.functionsInfo.get(function);
-                System.out.println(function);
-                for (String variable : functionInfo.linearRanges.keySet()) {
-                    LSRAInfo.LinearRange linearRange = functionInfo.linearRanges.get(variable);
+            if (lsraInfo.debug) {
+                for (String variable : lsraInfo.currentVariables) {
+                    LSRAInfo.LinearRange linearRange = lsraInfo.currentLinearRanges.get(variable);
+                    if (linearRange == null) {
+                        continue;
+                    }
                     System.out.println(variable + ": " + linearRange.start + "-" + linearRange.end + " crossCall: " + linearRange.crossCall);
                 }
             }
+            lsraInfo.exitFunction();
         }
+
         int a = 5;
 
     }
