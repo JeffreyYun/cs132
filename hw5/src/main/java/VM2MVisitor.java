@@ -3,9 +3,7 @@ import cs132.vapor.ast.*;
 public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
     @Override
     public void visit(VAssign vAssign) throws RuntimeException {
-        if (vAssign.source instanceof VLitInt) {
-            VM2M.println("li " + vAssign.dest + " " + vAssign.source);
-        } else if (vAssign.source instanceof VVarRef.Register) {
+        if (vAssign.source instanceof VVarRef.Register) {
             VM2M.println("move " + vAssign.dest + " " + vAssign.source);
         } else if (vAssign.source instanceof VLitStr) {
             String string = vAssign.source.toString();
@@ -20,6 +18,8 @@ public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
                 VM2M.nameToString.put(name, string);
             }
             VM2M.println("la " + vAssign.dest + " " + name);
+        } else {
+            VM2M.println("li " + vAssign.dest + " " + vAssign.source);
         }
     }
 
@@ -98,7 +98,9 @@ public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
                 VM2M.println("li $a0 " + vBuiltIn.args[0]);
             }
             VM2M.println("jal _heapAlloc");
-            VM2M.println("move " + vBuiltIn.dest + " $v0");
+            if (vBuiltIn.dest != null) {
+                VM2M.println("move " + vBuiltIn.dest + " $v0");
+            }
         } else if (vBuiltIn.op == VBuiltIn.Op.Le) {
             if (vBuiltIn.args[0] instanceof VLitInt) {
                 VM2M.println("li $t9 " + vBuiltIn.args[0]);
