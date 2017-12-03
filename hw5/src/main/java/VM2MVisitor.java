@@ -7,6 +7,19 @@ public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
             VM2M.println("li " + vAssign.dest + " " + vAssign.source);
         } else if (vAssign.source instanceof VVarRef.Register) {
             VM2M.println("move " + vAssign.dest + " " + vAssign.source);
+        } else if (vAssign.source instanceof VLitStr) {
+            String string = vAssign.source.toString();
+            int index = string.lastIndexOf('"');
+            string = string.substring(0, index) + "\\n\"";
+            final String name;
+            if (VM2M.stringToName.containsKey(string)) {
+                name = VM2M.stringToName.get(string);
+            } else {
+                name = "_str" + VM2M.stringIndex++;
+                VM2M.stringToName.put(string, name);
+                VM2M.nameToString.put(name, string);
+            }
+            VM2M.println("la " + vAssign.dest + " " + name);
         }
     }
 
@@ -179,18 +192,22 @@ public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
             }
             VM2M.println("jal _print");
         } else if (vBuiltIn.op == VBuiltIn.Op.PrintString) {
-            String string = vBuiltIn.args[0].toString();
-            int index = string.lastIndexOf('"');
-            string = string.substring(0, index) + "\\n\"";
-            final String name;
-            if (VM2M.stringToName.containsKey(string)) {
-                name = VM2M.stringToName.get(string);
+            if (vBuiltIn.args[0] instanceof VLitStr) {
+                String string = vBuiltIn.args[0].toString();
+                int index = string.lastIndexOf('"');
+                string = string.substring(0, index) + "\\n\"";
+                final String name;
+                if (VM2M.stringToName.containsKey(string)) {
+                    name = VM2M.stringToName.get(string);
+                } else {
+                    name = "_str" + VM2M.stringIndex++;
+                    VM2M.stringToName.put(string, name);
+                    VM2M.nameToString.put(name, string);
+                }
+                VM2M.println("la $a0 " + name);
             } else {
-                name = "_str" + VM2M.stringIndex++;
-                VM2M.stringToName.put(string, name);
-                VM2M.nameToString.put(name, string);
+                VM2M.println("la $a0 " + vBuiltIn.args[0]);
             }
-            VM2M.println("la $a0 " + name);
             VM2M.println("j _printS");
         } else if (vBuiltIn.op == VBuiltIn.Op.RemS) {
             String source;
