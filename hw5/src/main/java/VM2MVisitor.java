@@ -18,8 +18,11 @@ public class VM2MVisitor extends VInstr.Visitor<RuntimeException> {
                 VM2M.nameToString.put(name, string);
             }
             VM2M.println("la " + vAssign.dest + " " + name);
+        } else if (vAssign.source instanceof VLabelRef) {
+            VM2M.println("la " + vAssign.dest + " " + ((VLabelRef) vAssign.source).ident);
         } else {
             VM2M.println("li " + vAssign.dest + " " + vAssign.source);
+
         }
     }
 
